@@ -12,11 +12,11 @@ import (
 
 func main() {
 	start := time.Now()
-	answer := part1()
-	fmt.Printf("Answer: %d\nDuration: %v\n", answer, time.Since(start))
+	answer1, answer2 := part1()
+	fmt.Printf("Answer 1: %d\nAnswer 2: %d\nDuration: %v\n", answer1, answer2, time.Since(start))
 }
 
-func part1() int {
+func part1() (int, int) {
 	file, err := os.Open("input.txt")
 	if err != nil {
 		panic("Couldn't open input.txt")
@@ -25,6 +25,7 @@ func part1() int {
 	ordering := map[int][]int{}
 
 	wellOrderedUpdates := make([]string, 0)
+	reorderedUpdates := make([][]int, 0)
 	parsingPageOrder := true
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
@@ -50,43 +51,75 @@ func part1() int {
 			pgPrecedes := ordering[leftPg]
 			ordering[leftPg] = append(pgPrecedes, rightPg)
 		} else {
-			// Parsing page updates
-			badOrder := false
-			pages := strings.Split(line, ",")
-			for i, pg := range pages {
-				currPg, err := strconv.Atoi(pg)
-				if err != nil {
-					panic(err.Error())
-				}
-				for j := 0; j < i; j++ {
-					// Check past pages for ordering
-					prevPg, _ := strconv.Atoi(pages[j])
-					precedingPgs := ordering[currPg]
-					k := slices.Index(precedingPgs, prevPg)
-					if k != -1 {
-						badOrder = true
-						break
-					}
-				}
-				if badOrder {
-					break
-				}
-			}
-			if !badOrder {
-				fmt.Println("Good order: ", line)
+			pgs := csvToInts(line)
+			legalOrder, badIdx, swapIdx := pgOrderLegal(pgs, ordering)
+			if legalOrder {
 				wellOrderedUpdates = append(wellOrderedUpdates, line)
+			} else {
+				newPgs := make([]int, len(pgs))
+				copy(newPgs, pgs)
+				for !legalOrder {
+					newPgs[badIdx], newPgs[swapIdx] = newPgs[swapIdx], newPgs[badIdx]
+					legalOrder, badIdx, swapIdx = pgOrderLegal(newPgs, ordering)
+				}
+				reorderedUpdates = append(reorderedUpdates, newPgs)
+				// fmt.Printf("Found legal order:\n")
+				// fmt.Printf("\tOld: %s:", line)
+				// fmt.Printf("\tNew: %v:", newPgs)
+				// fmt.Printf("%s, badIdx: %d, swapIdx: %d\n", line, badIdx, swapIdx)
 			}
 		}
 	}
 
 	// TODO: Lots of redundant code here w/r/t line spliting and converting to ints
-	sum := 0
+	wellOrderedSum := 0
 	for _, update := range wellOrderedUpdates {
 		pages := strings.Split(update, ",")
 		middlePage := pages[len(pages)/2]
 		middlePgNum, _ := strconv.Atoi(middlePage)
-		sum += middlePgNum
+		wellOrderedSum += middlePgNum
 	}
 
-	return sum
+	reorderedSum := 0
+	for _, update := range reorderedUpdates {
+		middlePage := update[len(update)/2]
+		reorderedSum += middlePage
+	}
+
+	return wellOrderedSum, reorderedSum
+}
+
+func csvToInts(pgUpdatesLine string) []int {
+	var err error
+	split := strings.Split(pgUpdatesLine, ",")
+	pgs := make([]int, len(split))
+	for i, s := range split {
+		pgs[i], err = strconv.Atoi(s)
+		if err != nil {
+			panic(fmt.Errorf("Unable to parse pg: %w", err))
+		}
+	}
+	return pgs
+}
+
+func pgOrderLegal(pgUpdates []int, pgOrder map[int][]int) (bool, int, int) {
+	inOrder := true
+	badIdx := -1
+	swapIdx := -1
+	for i, pg := range pgUpdates {
+		for j := 0; j < i; j++ {
+			prevPg := pgUpdates[j]
+			precedingPgs := pgOrder[pg]
+			if slices.Index(precedingPgs, prevPg) != -1 {
+				inOrder = false
+				badIdx = i
+				swapIdx = j
+				break
+			}
+		}
+		if !inOrder {
+			break
+		}
+	}
+	return inOrder, badIdx, swapIdx
 }
