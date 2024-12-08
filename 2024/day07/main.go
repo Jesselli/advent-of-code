@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -69,5 +70,21 @@ func visit(eq equation, idx int, currentVal int) bool {
 
 	foundBySum := visit(eq, idx+1, currentVal+eq.testVals[idx])
 	foundByMult := visit(eq, idx+1, currentVal*eq.testVals[idx])
-	return foundBySum || foundByMult
+	foundByConcat := visit(eq, idx+1, concat(currentVal, eq.testVals[idx]))
+	return foundBySum || foundByMult || foundByConcat
+}
+
+func concat(l, r int) int {
+	i := 1
+	for {
+		result := r / int(math.Pow10(i))
+		if result == 0 {
+			// numDigits = i
+			break
+		}
+		i++
+	}
+	result := l*int(math.Pow10(i)) + r
+	return result
+
 }
