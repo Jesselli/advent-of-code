@@ -66,17 +66,50 @@ func part1() (int, int) {
 				c1 := v[lIdx]
 				c2 := v[rIdx]
 				delta := c2.minus(c1)
-				antiNode1 := c2.plus(delta)
-				if antiNode1.withinBounds(width, height) {
-					antiNodes[antiNode1] = true
+				antiNodes[c1] = true
+				antiNodes[c2] = true
+
+				inBounds := true
+				antiNode := c2
+				for inBounds {
+					antiNode = antiNode.plus(delta)
+					inBounds = antiNode.withinBounds(width, height)
+					if inBounds {
+						antiNodes[antiNode] = true
+					}
 				}
-				antiNode2 := c1.minus(delta)
-				if antiNode2.withinBounds(width, height) {
-					antiNodes[antiNode2] = true
+
+				inBounds = true
+				antiNode = c2
+				for inBounds {
+					antiNode = antiNode.minus(delta)
+					inBounds = antiNode.withinBounds(width, height)
+					if inBounds {
+						antiNodes[antiNode] = true
+					}
 				}
+				// antiNode1 := c2.plus(delta)
+				// if antiNode1.withinBounds(width, height) {
+				// 	antiNodes[antiNode1] = true
+				// }
+				// antiNode2 := c1.minus(delta)
+				// if antiNode2.withinBounds(width, height) {
+				// 	antiNodes[antiNode2] = true
+				// }
 			}
 		}
 	}
+
+	// for y := 0; y < height; y++ {
+	// 	for x := 0; x < width; x++ {
+	// 		if antiNodes[coord{x, y}] == true {
+	// 			fmt.Print("#")
+	// 		} else {
+	// 			fmt.Print(".")
+	// 		}
+	// 	}
+	// 	fmt.Println()
+	// }
 
 	return len(antiNodes), 0
 }
