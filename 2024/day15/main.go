@@ -28,32 +28,58 @@ func (r *room) moveRobo(dir vec2) {
 	canMove, boxesToMove := r.freeToMove(r.roboPos, dir)
 	if canMove {
 		r.roboPos = trgSq
-		for _, b := range boxesToMove {
+		for b := range boxesToMove {
 			r.squares[b] = '.'
 		}
-		for _, b := range boxesToMove {
-			r.squares[b.add(dir)] = 'O'
+		for b, v := range boxesToMove {
+			r.squares[b.add(dir)] = v
 		}
 	}
 }
 
-func (r *room) freeToMove(sq vec2, dir vec2) (bool, []vec2) {
+func (r *room) freeToMove(sq vec2, dir vec2) (bool, map[vec2]rune) {
 	canMove := true
-	boxesToMove := make([]vec2, 0)
-
+	boxesToMove := make(map[vec2]rune, 0)
 	nextSq := sq.add(dir)
-	for nextSq[0] >= 0 && nextSq[0] < r.width && nextSq[1] >= 0 && nextSq[1] < r.height {
-		if r.squares[nextSq] == 'O' {
-			boxesToMove = append(boxesToMove, nextSq)
-		} else if r.squares[nextSq] == '.' {
-			canMove = true
-			break
-		} else if r.squares[nextSq] == '#' {
-			canMove = false
-			break
+
+	if r.squares[nextSq] == '#' {
+		canMove = false
+	} else if r.squares[nextSq] == ']' {
+		boxesToMove[nextSq] = ']'
+		nextCanMove, nextBoxesToMove := r.freeToMove(nextSq, dir)
+		canMove = canMove && nextCanMove
+		for nb, v := range nextBoxesToMove {
+			boxesToMove[nb] = v
 		}
-		nextSq = nextSq.add(dir)
+
+		if canMove && dir[1] != 0 {
+			boxesToMove[nextSq.add(vec2{-1, 0})] = '['
+			nextCanMove, nextBoxesToMove = r.freeToMove(nextSq.add(vec2{-1, 0}), dir)
+			canMove = canMove && nextCanMove
+			for nb, v := range nextBoxesToMove {
+				boxesToMove[nb] = v
+			}
+		}
+	} else if r.squares[nextSq] == '[' {
+		boxesToMove[nextSq] = '['
+		nextCanMove, nextBoxesToMove := r.freeToMove(nextSq, dir)
+		canMove = canMove && nextCanMove
+		for nb, v := range nextBoxesToMove {
+			boxesToMove[nb] = v
+		}
+
+		if canMove && dir[1] != 0 {
+			boxesToMove[nextSq.add(vec2{1, 0})] = ']'
+			nextCanMove, nextBoxesToMove = r.freeToMove(nextSq.add(vec2{1, 0}), dir)
+			canMove = canMove && nextCanMove
+			for nb, v := range nextBoxesToMove {
+				boxesToMove[nb] = v
+			}
+		}
+	} else if r.squares[nextSq] == '.' {
+		// Free space -- we can move
 	}
+
 	return canMove, boxesToMove
 }
 
@@ -74,7 +100,7 @@ func (r *room) print() {
 func (r *room) sumGPSCoords() int {
 	sum := 0
 	for k, v := range r.squares {
-		if v == 'O' {
+		if v == '[' {
 			sum += 100*k[1] + k[0]
 		}
 	}
@@ -123,11 +149,7 @@ func part1() (int, int) {
 
 		if parsingRoom {
 			parseRoomInput(&room, y, line)
-			// if x := strings.IndexRune(line, '@'); x != -1 {
-			// 	room.roboPos[0] = x
-			// 	room.roboPos[1] = y
-			// }
-			room.width = len(line)
+			room.width = len(line) * 2
 			y++
 		} else {
 			input := parseRobotInput(line)
@@ -135,7 +157,6 @@ func part1() (int, int) {
 		}
 	}
 	room.height = y
-	// room.print()
 
 	for _, d := range roboInput {
 		// fmt.Scanln()
@@ -143,7 +164,7 @@ func part1() (int, int) {
 		room.moveRobo(d)
 		// room.print()
 	}
-	room.print()
+	// room.print()
 
 	return room.sumGPSCoords(), 0
 }
@@ -151,16 +172,20 @@ func parseRoomInput(rm *room, y int, line string) {
 	for x, r := range line {
 		if r == '#' {
 			// Wall
-			rm.squares[vec2{x, y}] = r
+			rm.squares[vec2{x * 2, y}] = r
+			rm.squares[vec2{x*2 + 1, y}] = r
 		} else if r == 'O' {
 			// Box
-			rm.squares[vec2{x, y}] = r
+			rm.squares[vec2{x * 2, y}] = '['
+			rm.squares[vec2{x*2 + 1, y}] = ']'
 		} else if r == '@' {
 			// Robot
-			rm.roboPos = vec2{x, y}
-			rm.squares[vec2{x, y}] = '.'
+			rm.roboPos = vec2{x * 2, y}
+			rm.squares[vec2{x * 2, y}] = '.'
+			rm.squares[vec2{x*2 + 1, y}] = '.'
 		} else if r == '.' {
-			rm.squares[vec2{x, y}] = r
+			rm.squares[vec2{x * 2, y}] = r
+			rm.squares[vec2{x*2 + 1, y}] = r
 		}
 	}
 }
